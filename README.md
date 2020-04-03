@@ -1,5 +1,5 @@
 # SoalShiftSISOP20_modul3_F06
-## Soal 1
+## Soal 2
 Qiqi adalah sahabat MamMam dan Kaka. Qiqi , Kaka dan MamMam sangat senang
 bermain “Rainbow six” bersama-sama , akan tetapi MamMam sangat Toxic ia selalu
 melakukan Team killing kepada Qiqi di setiap permainannya. Karena Qiqi orang yang
@@ -481,3 +481,7 @@ Penjelasan:
 - Client yang terkena hit akan menampilkan HP miliknya sekarang di layarnya sendiri.
 - Setelah salah satu orang kalah, client akan menampilkan apakah client tersebut menang atau kalah.
 - Client akan kembali ke menu screen 2 untuk find match kembali, atau logout.
+
+##Kendala:
+soal 3: kesulitan untuk kondisi argumen -d dan \*, hanya file tertentu yang masuk ke fungsi thread.
+soal 4b: isi matriks hasil penjumlahan bilangan tidak urut

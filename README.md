@@ -13,7 +13,7 @@ Syarat :
 - Menggunakan Socket, dan Thread
 
 #### soal2_server.c
-~~~
+~~~c
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -482,6 +482,219 @@ Penjelasan:
 - Setelah salah satu orang kalah, client akan menampilkan apakah client tersebut menang atau kalah.
 - Client akan kembali ke menu screen 2 untuk find match kembali, atau logout.
 
-##Kendala:
-soal 3: kesulitan untuk kondisi argumen -d dan \*, hanya file tertentu yang masuk ke fungsi thread.
-soal 4b: isi matriks hasil penjumlahan bilangan tidak urut
+## Soal 4
+### 4a 
+1. Buatlah program C dengan nama "4a.c", yang berisi program untuk
+melakukan perkalian matriks. Ukuran matriks pertama adalah 4x2, dan
+matriks kedua 2x5. Isi dari matriks didefinisikan di dalam kodingan. Matriks
+nantinya akan berisi angka 1-20 (tidak perlu dibuat filter angka).
+2. Tampilkan matriks hasil perkalian tadi ke layar.
+~~~c
+#define M 4
+#define K 2
+#define N 5
+
+int main(){
+    key_t key = 1234;
+    int *hasil;
+
+    int shmid = shmget(key, sizeof(int)*M*N, IPC_CREAT|0666);
+
+    hasil = shmat(shmid, NULL, 0);
+
+    int matriksA[M][K] = {{3, 2}, {1, 11}, {5, 10}, {9, 15}};
+    int matriksB[K][N] = {{6, 17, 7, 12, 13}, {18, 1, 14, 4, 8}};
+
+    int res[M][N];
+    int i, j, k;
+    int tot=0;
+    for(i=0; i<M; i++){
+		for(j=0; j<N; j++)
+		    res[i][j] = 0;
+    }
+
+    for(i=0; i<M; i++){
+        for(j=0; j<N; j++){
+            //*hasil[i][j] = 0;
+            for(k=0; k<K; k++){
+                res[i][j] = res[i][j] + matriksA[i][k] * matriksB[k][j];
+            }
+        }
+    }
+    printf("Hasil perkalian matriks:\n");
+
+    for(i=0; i<M; i++){
+        for(j=0; j<N; j++)
+            printf("%d ", res[i][j]);
+        printf("\n");
+    }
+
+    int index = 0;
+    for(i=0; i<M; i++){
+        for(j=0; j<N; j++){
+            hasil[index] = res[i][j];
+            index++;
+        }
+    }
+
+    sleep(5);
+
+    shmdt(hasil);
+    shmctl(shmid, IPC_RMID, NULL);
+}
+~~~
+Penjelasan:
+- Mendefine ukuran ukuran matrix dengan variable yakni M, K, dan N dengan angka berturut-turut adalah 4, 2, 5.
+- Seperti pada template, menginisialisasi key_t dengan suatu angka, di sini saya mengikuti template; 1234.
+- Selanjutnya juga masih sama seperti yang di template: mendeklarasikan variabel pointer hasil yang nantinya akan dipass ke share memory, mendeklarasikan share memory id dengan shmget, dan mengattach variabel hasil tadi ke share memory dengan shmat.
+- Deklarasi sekaligus inisialisasi matriks A dan matriks B dengan isi angka 1-20.
+- Deklarasi matriks res dengan ukuran M * N yang nantinya akan dipakai untuk menyimpan hasil perkalian matriks.
+- Menginisialisasi semua isi matriks res dengan 0
+- Menghitung perkalian matriks seperti yang sudah pernah dipelajari di dasar pemrograman.
+- Mencetak matriks res atau matriks hasil perkalian.
+- Meng-assign isi dari variabel pointer hasil (dijadikan array satu dimensi) dengan isi dari matriks res.
+- Sleep 5 detik untuk meng-share memory.
+
+### 4b
+1. Buatlah program C kedua dengan nama "4b.c". Program ini akan
+mengambil variabel hasil perkalian matriks dari program "4a.c" (program
+sebelumnya), dan tampilkan hasil matriks tersebut ke layar.
+(Catatan!: gunakan shared memory)
+2. Setelah ditampilkan, berikutnya untuk setiap angka dari matriks
+tersebut, carilah nilai faktorialnya, dan tampilkan hasilnya ke layar dengan
+format seperti matriks.
+~~~c
+#define M 4
+#define N 5
+
+pthread_mutex_t lock;
+int array_hasil[20];
+int id_arr = 0;
+
+void* jumlah(void* angka){
+    //pthread_mutex_lock(&lock);
+    int bil;
+
+    bil = (int)(intptr_t)angka;
+    //printf("angka = %d\n", bil);
+    int hasil = 1;
+    int i;
+
+    for(i=2; i<=bil; i++)
+        hasil += i;
+    
+    //pthread_mutex_lock(&lock);
+    array_hasil[id_arr] = hasil;
+    id_arr++;
+    //pthread_mutex_unlock(&lock);
+}
+
+int main(){
+    if (pthread_mutex_init(&lock, NULL) != 0){
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+
+    key_t key = 1234;
+    int *hasil;
+
+    int shmid = shmget(key, sizeof(int)*M*N, IPC_CREAT|0666);
+    hasil = shmat(shmid, NULL, 0);
+
+    int i, j;
+
+    printf("Hasil perkalian matriks:\n");
+    for(i=0; i<20; i++){
+        printf("%d ", hasil[i]);
+        if((i + 1) % 5 == 0){
+            printf("\n");
+        }
+    }
+
+    pthread_t thread[20];
+    int k = 0 , err;
+    for(i=0; i<20; i++){
+        err = pthread_create(&(thread[i]), NULL, &jumlah, (void*)(intptr_t)hasil[i]);
+    }
+
+    for(i=0; i<20; i++){
+        pthread_join(thread[i], NULL);
+    }
+
+    printf("\nHasil penjumlahan:\n");
+        for(i=0; i<20; i++){
+            printf("%d ", array_hasil[i]);
+            //fflush(stdout);
+            if((i + 1) % 5 == 0){
+                printf("\n");
+                //fflush(stdout);
+            }
+        }
+
+    shmdt(hasil);
+    shmctl(shmid, IPC_RMID, NULL);
+}
+~~~
+Penjelasan:
+- Mendefine ukuran matriks sama seperti 4a hanya saja cuma M dan N yaitu 4 dan 5
+- `pthread_mutex_t lock` ini sebenarnya mendeklarasikan mutex namun pada akhirnya tidak dipakai, saya lupa tidak menghapus.
+- mendeklarasikan array_hasil sebagai array untuk menyimpan hasil dari pertambahan angka dan deklarasi serta inisialisasi variabel integer id_arr untuk index array_hasil yang dimulai dengan 0.
+- Membuat fungsi void pointer jumlah dengan parameter void pointer yang nantinya akan menghitung penjumlahan tiap-tiap angka pada matriks hasil.
+	- deklarasi variabel integer bil yang kemudian di-assign dengan variabel void pointer angka yang telah dipassing.
+	- inisialisasi variabel hasil untuk menyimpan hasil dari penjumlahan bilangan
+	- melakukan penjumlahan bilangan dengan iterasi dari 2 (karena hasil tadi sudah di-assign dengan 1) hingga bilangan itu sendiri.
+	- menyimpan hasil ke dalam array_hasil, lalu meng-increment id_arr.
+- Dalam fungsi main program:
+	- seperti yang sudah saya katakan di atas, `pthread_mutex` tidak jadi dipakai.
+	- sama seperti 4a, yaitu melakukan template share memory.
+	- menampilkan hasil dari perkalian matriks yang telah diambil dari share memory dalam bentuk array satu dimensi bernama hasil. ditampilkan dalam bentuk seperti matriks sehingga apabila index angkanya bisa habis dibagi 5 maka akan mengeprint newline.
+	- mendeklarasikan thread berjumlah 20, membentuk thread menggunakan `pthread_create` dengan parameter thread ke-i, NULL, fungsi jumlah, dan angka ke-i dalam array hasil. setelah itu meng-join-kan semua thread.
+	- menampilkan array_hasil dalam bentuk matriks.
+
+### 4c
+1. Buatlah program C ketiga dengan nama "4c.c". Program ini tidak
+memiliki hubungan terhadap program yang lalu.
+2. Pada program ini, Norland diminta mengetahui jumlah file dan
+folder di direktori saat ini dengan command "ls | wc -l". Karena sudah belajar
+IPC, Norland mengerjakannya dengan semangat.
+(Catatan! : Harus menggunakan IPC Pipes)
+~~~c
+int pipes[2];
+
+int main(){
+    if (pipe(pipes) == -1)
+        exit(1);
+
+    if (fork() == 0){
+        // output to pipes
+        dup2(pipes[1], 1);
+
+        // close reading end of pipe
+        close(pipes[0]);
+
+        // exec
+        char *argv[] = {"ls", NULL};
+        execv("/bin/ls", argv);
+    }
+    else{
+        // input from pipes
+        dup2(pipes[0], 0);
+
+        // close writing end of pipe
+        close(pipes[1]);
+
+        char *argv[] = {"wc", "-l", NULL};
+        execv("/usr/bin/wc", argv);
+    }
+
+}
+~~~
+Penjelasan:
+- mendeklarasikan array pipes dengan size 2 (untuk 0 dan 1)
+- melakukan pipe pada array pipes. `if (pipe(pipes) == -1) exit(1);` merupakan error handling apabila pipe gagal dibuat.
+- melakukan fork, jika merupakan child process maka:
+	- menggunakan fungsi dup2 untuk meng-copy suatu output (dalam hal ini 1 adalah stdout) ke dalam writing end dari pipes. setelah itu menutup reading end dari pipes.
+	- melakukan `exec ls`
+- dalam parent process:
+	- menggunakan fungsi dup2 untuk me-repalce standard input (0) dengan input dari pipe. setelah itu menutup writing end dari pipes.
+	- melakukan` exec wc -l`

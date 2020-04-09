@@ -252,7 +252,7 @@ Penjelasan:
 - Ketika permainan berakhir, server stand-by pada halaman screen 2.
 
 #### soal2_client.c
-~~~
+~~~c
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -481,6 +481,433 @@ Penjelasan:
 - Client yang terkena hit akan menampilkan HP miliknya sekarang di layarnya sendiri.
 - Setelah salah satu orang kalah, client akan menampilkan apakah client tersebut menang atau kalah.
 - Client akan kembali ke menu screen 2 untuk find match kembali, atau logout.
+
+## Soal 3
+Membuat program untuk mengkategorikan file.
+~~~c
+int i, err;
+void* pindah(void*);
+int is_regular_file(const char*);
+
+int main(int argc, char* argv[]){
+    int j;
+    // for(j=0; j<argc; j++){
+    //     printf("argumen %d: %s\n", j, argv[j]);
+    // }
+    if(argc < 2) 
+        printf("argumennya kakak\n");
+    else if(strcmp(argv[1], "-f") == 0){
+        pthread_t thread[argc-2];
+
+        for(i=0; i<(argc-2); i++){
+            if(is_regular_file(argv[i+2])){
+                err = pthread_create(&(thread[i]), NULL, &pindah, (void*)argv[i+2]);
+            }
+            else
+                printf("bukan file\n");
+        }
+
+        for(i=0; i<(argc-2); i++){
+            pthread_join(thread[i], NULL);
+        }
+    }
+    else if(strcmp(argv[1], "*") == 0){
+        int count = 0;
+        int index = 0;
+        DIR* d;
+        struct dirent *dir;
+        d = opendir(".");
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    count++;
+                }
+            }
+        }
+        closedir(d);
+        pthread_t thread[count];
+        //printf("%d\n", count);
+        d = opendir(".");
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    //printf("%s\n", dir->d_name);
+                    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)dir->d_name);
+                    //printf("%d\n", index);
+                    index++;
+                }
+            }
+        }
+        closedir(d);
+        for(i=0; i<count; i++){
+            pthread_join(thread[i], NULL);
+        }
+        
+    }
+    else if(strcmp(argv[1], "-d") == 0){
+        int count = 0;
+        int index = 0;
+        DIR* d;
+        struct dirent *dir;
+        if(is_regular_file(argv[2])){
+            printf("Bukan direktori\n");
+            exit(1);
+        }
+            
+        d = opendir(argv[2]);
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    count++;
+                }
+            }
+        }
+        closedir(d);
+        pthread_t thread[count];
+        //printf("%d\n", count);
+        d = opendir(argv[2]);
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    //printf("%s\n", dir->d_name);
+                    char path[300];
+                    sprintf(path, "%s/%s", argv[2], dir->d_name);
+                    //printf("path: %s\n", path);
+                    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)path);
+                    //printf("%d\n", index);
+                    index++;
+                }
+            }
+        }
+        closedir(d);
+        for(i=0; i<count; i++){
+            pthread_join(thread[i], NULL);
+        }
+    }
+    else{
+        printf("Salah argumen kakak\n");
+    }
+    //pthread_mutex_destroy(&lock);
+}
+
+void* pindah(void* ptr){
+    char* path;
+    char* ext;
+    char* name;
+    path = (char*)ptr;
+
+    name = strrchr(path, '/');  //nama file tapi ada /-nya, eg: "/soal1.sh"
+    char newfolder[100];        
+    ext = strrchr(path, '.');   //extensi file
+    //kalau jenis file diketahui
+    if(ext){
+        //printf("%s\n", path);
+
+        for(i=0; i<(strlen(ext)); i++){
+            newfolder[i] = ext[i+1];
+        }
+        //printf("newfolder: %s\n", newfolder);
+        int compare;
+        int sama = 0;
+        DIR* d = opendir(".");
+        struct dirent *dir;
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                compare = strcasecmp(newfolder, dir->d_name);
+                //printf("%s %s %d\n", newfolder, dir->d_name, compare);
+                if(compare == 0){
+                        if(dir->d_type == DT_DIR){
+                            sama = 1;
+                            strcpy(newfolder, dir->d_name);
+                            //printf("udah ada foldernya\n");
+                            break;
+                        }
+                    break; 
+                }
+            }
+        }
+        closedir(d);
+        if(sama == 1){
+            //printf("masuk sama\n");
+            if(name)
+                strcat(newfolder, name);
+            else
+                sprintf(newfolder, "%s/%s", newfolder, path);
+            printf("folder: %s\n", newfolder);
+            if(rename(path, newfolder) < 0)
+                printf("Error move file\n");
+            else{
+                printf("berhasil hore\n");
+            }
+        }
+        else{
+            printf("masuk beda\n");
+            if(mkdir(newfolder, 0777) < 0)
+                printf("Error create folder\n");
+            else{
+                if(name)
+                    strcat(newfolder, name);
+                else
+                    sprintf(newfolder, "%s/%s", newfolder, path);
+                if(rename(path, newfolder) < 0)
+                    printf("Error move file\n");
+                else{
+                    printf("berhasil hore\n");
+                }
+            }
+        }
+        
+    }
+    else{
+        printf("masuk unknown\n");
+        char unk[100];
+        strcat(unk, "Unknown");
+        DIR* dir = opendir(unk);
+        if(dir){
+            printf("udah ada\n");
+            strcat(unk, name);
+            //printf("folder: %s\npath: %s\n", unk, path);
+            if(rename(path, unk) < 0)
+                printf("Error move file\n");
+            else{
+                printf("berhasil hore\n");
+            }
+        }
+        else{
+            printf("newfolder: %s", unk);
+            if(mkdir(unk, 0777) < 0)
+                printf("Error create folder\n");
+            else{
+                strcat(unk, name);
+                if(rename(path, unk) < 0)
+                    printf("Error move file\n");
+                else{
+                    printf("berhasil hore\n");
+                }
+            }
+        }
+        closedir(dir);
+    }      
+    
+}
+
+int is_regular_file(const char *path)
+{
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
+}
+~~~
+Penjelasan:
+- kondisi apabila user tidak memberikan opsi
+~~~c
+if(argc < 2) 
+        printf("argumennya kakak\n");
+~~~
+- kondisi apabila user memberikan opsi -f
+~~~c
+else if(strcmp(argv[1], "-f") == 0){
+        pthread_t thread[argc-2];
+
+        for(i=0; i<(argc-2); i++){
+            if(is_regular_file(argv[i+2])){
+                err = pthread_create(&(thread[i]), NULL, &pindah, (void*)argv[i+2]);
+            }
+            else
+                printf("bukan file\n");
+        }
+
+        for(i=0; i<(argc-2); i++){
+            pthread_join(thread[i], NULL);
+        }
+    }
+~~~
+Membuat thread sebanyak file yang diketik (argc-2 karena argumen pertama adalah program dan argumen kedua adalah opsi). Selanjutnya melakukan iterasi sebanyak file tadi, dicek terlebih dahulu apakah argumen yang dimasukkan merupakan file atau bukan. Jika file, maka akan melakukan `pthread_create` dengan parameter thread ke-i, NULL, fungsi pindah, dan path file yang telah dimasukkan. Setelah itu melakukan `pthread_join`.
+- Kondisi apabila user memberikan opsi \*
+~~~c
+ else if(strcmp(argv[1], "*") == 0){
+        int count = 0;
+        int index = 0;
+        DIR* d;
+        struct dirent *dir;
+        d = opendir(".");
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    count++;
+                }
+            }
+        }
+        closedir(d);
+~~~
+
+Pertama mendeklarasikan sekaligus menginisiasi variabel count untuk menyimpan jumlah file yang ada di folder dan variabel index untuk index dari array thread. Membuka direktori (".") atau current direktori, melakukan read pada direktori itu dan menghitung jumlah file yang ada di dalamnya.
+
+~~~c
+pthread_t thread[count];
+        //printf("%d\n", count);
+        d = opendir(".");
+        if(d){
+            while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    //printf("%s\n", dir->d_name);
+                    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)dir->d_name);
+                    //printf("%d\n", index);
+                    index++;
+                }
+            }
+        }
+        closedir(d);
+        for(i=0; i<count; i++){
+            pthread_join(thread[i], NULL);
+        }
+        
+    }
+~~~
+
+Mendeklarasikan thread sebanyak jumlah file. Membuka direktori dan membacanya kembali, apabila file yang dibaca merupakan regular file (bukan direktori) maka file tersebut akan dikategorikan dengan melakukan `pthread_create` sama seperti opsi -f yang sudah dijelaskan diatas, hanya saja yang dipassing-kan adalah nama filenya.
+
+- Kondisi apabila user memberikan opsi -d
+~~~c
+while((dir = readdir(d)) != NULL){
+                if(dir->d_type == DT_REG){
+                    //printf("%s\n", dir->d_name);
+                    char path[300];
+                    sprintf(path, "%s/%s", argv[2], dir->d_name);
+                    //printf("path: %s\n", path);
+                    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)path);
+                    //printf("%d\n", index);
+                    index++;
+                }
+            }
+~~~
+Awalnya sama dengan opsi \*, namun yang dibuka adalah direktori path dari argumen yang telah diberikan. Menghitung jumlah file yang ada di dalam direktori tersebut, lalu membaca isi dari direktori. Di kondisi ini dibuat sebuah string path sebagai tempat untuk menyimpan path masing-masing file. Proses selanjutnya sama dengan proses yang ada di opsi \* hanya saja yang dipassing-kan adalah string path tadi.
+
+- Fungsi pindah
+~~~c
+char* path;
+char* ext;
+char* name;
+path = (char*)ptr;
+~~~
+Mendeklarasikan string path sebagai tempat menyimpan path yang ada dalam passing parameter. `path = (char*)ptr` meng-assign void pointer ptr pada parameter menjadi string.
+~~~c
+name = strrchr(path, '/');  //nama file tapi ada /-nya, eg: "/soal1.sh"
+char newfolder[100];        
+ext = strrchr(path, '.');   //extensi file
+~~~
+fungsi strrchr me-return sebuah string dari karakter terakhir yang ada pada parameter kedua dalam string pada parameter pertama hingga akhir string. Misal path-nya adalah "/home/tari/modul3/coba.txt", maka string name nantinya akan berisi "/coba.txt" sedangkan string ext berisi ".txt"
+
+- Jika extensi file diketahui
+~~~c
+for(i=0; i<(strlen(ext)); i++){
+    newfolder[i] = ext[i+1];
+}
+//printf("newfolder: %s\n", newfolder);
+int compare;
+int sama = 0;
+~~~
+Mengcopy string ext pada newfolder namun tanpa titik. Mendeklarasikan variabel compare dan sama = 0 (sebagai flag untuk membuat new folder)
+~~~c
+ DIR* d = opendir(".");
+struct dirent *dir;
+if(d){
+    while((dir = readdir(d)) != NULL){
+	compare = strcasecmp(newfolder, dir->d_name);
+	//printf("%s %s %d\n", newfolder, dir->d_name, compare);
+	if(compare == 0){
+		if(dir->d_type == DT_DIR){
+		    sama = 1;
+		    strcpy(newfolder, dir->d_name);
+		    //printf("udah ada foldernya\n");
+		    break;
+		}
+	    break; 
+	}
+    }
+}
+closedir(d);
+~~~
+Membuka current directory kemudian membacanya. Meng-assign nilai compare dengan nilai return fungsi strcasecmp yaitu fungsi untuk membandingkan dua string dengan mengabaikan besar kecil hurufnya. Apabila nilai compare 0, maka folder extensi dari file sudah ada. Flag sama diganti menjadi 1, lalu meng-copy nama folder yang sudah ada tersebut ke string newfolder.
+~~~c
+ if(sama == 1){
+    //printf("masuk sama\n");
+    if(name)
+	strcat(newfolder, name);
+    else
+	sprintf(newfolder, "%s/%s", newfolder, path);
+    printf("folder: %s\n", newfolder);
+    if(rename(path, newfolder) < 0)
+	printf("Error move file\n");
+    else{
+	printf("berhasil hore\n");
+    }
+}
+~~~
+Jika folder extensi sudah ada, cek apakah variabel name NULL atau tidak (NULL berarti opsi \* karena path yang di-passing hanya nama filenya saja). Jika name tidak NULL, string name akan ditambahkan di belakang string newfolder. Jika name NULL, string newfolder akan ditambahkan "/" dan string path (karena ini kondisi untuk \*, path adalah nama file). Selanjutnya file dipindahkan menggunakan fungsi rename() dengan parameter pertama adalah source path dan parameter kedua destination path.
+~~~c
+else{
+    printf("masuk beda\n");
+    if(mkdir(newfolder, 0777) < 0)
+	printf("Error create folder\n");
+    else{
+	if(name)
+	    strcat(newfolder, name);
+	else
+	    sprintf(newfolder, "%s/%s", newfolder, path);
+	if(rename(path, newfolder) < 0)
+	    printf("Error move file\n");
+	else{
+	    printf("berhasil hore\n");
+	}
+    }
+}
+~~~
+Jika folder extensi belum ada, maka akan dibuat folder baru menggunakan fungsi mkdir(), selanjutnya melakukan pemindahan file sama seperti yang di atas.
+
+- Jika extensi tidak diketahui
+~~~c
+char unk[100];
+strcat(unk, "Unknown");
+DIR* dir = opendir(unk);
+if(dir){
+    printf("udah ada\n");
+    strcat(unk, name);
+    //printf("folder: %s\npath: %s\n", unk, path);
+    if(rename(path, unk) < 0)
+	printf("Error move file\n");
+    else{
+	printf("berhasil hore\n");
+    }
+}
+~~~
+Membuat string unk untuk nama folder baru, yang selanjutnya mengisi string tersebut dengan "Unknown". Membuka direktori unk untuk mengecek apakah direktori "Unknown" sudah ada atau belum. Jika sudah ada, menambahkan string name di belakang string unk lalu memindah file dengan fungsi rename() dari path ke unk.
+~~~c
+else{
+    printf("newfolder: %s", unk);
+    if(mkdir(unk, 0777) < 0)
+	printf("Error create folder\n");
+    else{
+	strcat(unk, name);
+	if(rename(path, unk) < 0)
+	    printf("Error move file\n");
+	else{
+	    printf("berhasil hore\n");
+	}
+    }
+}
+~~~
+Jika belum ada, membuat folder baru "Unknown" dengan fungsi mkdir lalu memindahkan file dari path ke unk.
+
+~~~c
+int is_regular_file(const char *path)
+{
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
+}
+~~~
+Merupakan fungsi tambahan untuk mengecek sebuah regular file atau bukan (direktori).
 
 ## Soal 4
 ### 4a 

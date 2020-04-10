@@ -483,17 +483,13 @@ Penjelasan:
 - Client akan kembali ke menu screen 2 untuk find match kembali, atau logout.
 
 ## Soal 3
-Membuat program untuk mengkategorikan file.
+Membuat program untuk mengkategorikan file. (opsi -d belum benar :( )
 ~~~c
 int i, err;
 void* pindah(void*);
 int is_regular_file(const char*);
 
 int main(int argc, char* argv[]){
-    int j;
-    // for(j=0; j<argc; j++){
-    //     printf("argumen %d: %s\n", j, argv[j]);
-    // }
     if(argc < 2) 
         printf("argumennya kakak\n");
     else if(strcmp(argv[1], "-f") == 0){
@@ -572,7 +568,7 @@ int main(int argc, char* argv[]){
                     //printf("%s\n", dir->d_name);
                     char path[300];
                     sprintf(path, "%s/%s", argv[2], dir->d_name);
-                    //printf("path: %s\n", path);
+                    printf("path: %s\n", path);
                     err = pthread_create(&(thread[index]), NULL, &pindah, (void*)path);
                     //printf("%d\n", index);
                     index++;
@@ -587,7 +583,6 @@ int main(int argc, char* argv[]){
     else{
         printf("Salah argumen kakak\n");
     }
-    //pthread_mutex_destroy(&lock);
 }
 
 void* pindah(void* ptr){
@@ -596,7 +591,9 @@ void* pindah(void* ptr){
     char* name;
     path = (char*)ptr;
 
+    printf("path pindah: %s\n", path);
     name = strrchr(path, '/');  //nama file tapi ada /-nya, eg: "/soal1.sh"
+    if(name) printf("%s\n", name);
     char newfolder[100];        
     ext = strrchr(path, '.');   //extensi file
     //kalau jenis file diketahui
@@ -629,11 +626,15 @@ void* pindah(void* ptr){
         closedir(d);
         if(sama == 1){
             //printf("masuk sama\n");
-            if(name)
+            if(name){
                 strcat(newfolder, name);
-            else
+                printf("ada nama, folder: %s\n", newfolder);
+            }   
+            else{
                 sprintf(newfolder, "%s/%s", newfolder, path);
-            printf("folder: %s\n", newfolder);
+                printf("folder: %s\n", newfolder);
+            }  
+            
             if(rename(path, newfolder) < 0)
                 printf("Error move file\n");
             else{
@@ -645,10 +646,14 @@ void* pindah(void* ptr){
             if(mkdir(newfolder, 0777) < 0)
                 printf("Error create folder\n");
             else{
-                if(name)
+                if(name){
                     strcat(newfolder, name);
-                else
+                    printf("ada nama, folder: %s\n", newfolder);
+                }   
+                else{
                     sprintf(newfolder, "%s/%s", newfolder, path);
+                    printf("folder: %s\n", newfolder);
+                }  
                 if(rename(path, newfolder) < 0)
                     printf("Error move file\n");
                 else{
@@ -665,7 +670,10 @@ void* pindah(void* ptr){
         DIR* dir = opendir(unk);
         if(dir){
             printf("udah ada\n");
-            strcat(unk, name);
+            if(name)
+                strcat(unk, name);
+            else
+                sprintf(unk, "%s/%s", unk, path);
             //printf("folder: %s\npath: %s\n", unk, path);
             if(rename(path, unk) < 0)
                 printf("Error move file\n");
@@ -678,7 +686,10 @@ void* pindah(void* ptr){
             if(mkdir(unk, 0777) < 0)
                 printf("Error create folder\n");
             else{
-                strcat(unk, name);
+                if(name)
+                    strcat(unk, name);
+                else
+                    sprintf(unk, "%s/%s", unk, path);
                 if(rename(path, unk) < 0)
                     printf("Error move file\n");
                 else{
@@ -745,24 +756,22 @@ Pertama mendeklarasikan sekaligus menginisiasi variabel count untuk menyimpan ju
 
 ~~~c
 pthread_t thread[count];
-        //printf("%d\n", count);
-        d = opendir(".");
-        if(d){
-            while((dir = readdir(d)) != NULL){
-                if(dir->d_type == DT_REG){
-                    //printf("%s\n", dir->d_name);
-                    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)dir->d_name);
-                    //printf("%d\n", index);
-                    index++;
-                }
-            }
-        }
-        closedir(d);
-        for(i=0; i<count; i++){
-            pthread_join(thread[i], NULL);
-        }
-        
+//printf("%d\n", count);
+d = opendir(".");
+if(d){
+    while((dir = readdir(d)) != NULL){
+	if(dir->d_type == DT_REG){
+	    //printf("%s\n", dir->d_name);
+	    err = pthread_create(&(thread[index]), NULL, &pindah, (void*)dir->d_name);
+	    //printf("%d\n", index);
+	    index++;
+	}
     }
+}
+closedir(d);
+for(i=0; i<count; i++){
+    pthread_join(thread[i], NULL);
+}
 ~~~
 
 Mendeklarasikan thread sebanyak jumlah file. Membuka direktori dan membacanya kembali, apabila file yang dibaca merupakan regular file (bukan direktori) maka file tersebut akan dikategorikan dengan melakukan `pthread_create` sama seperti opsi -f yang sudah dijelaskan diatas, hanya saja yang dipassing-kan adalah nama filenya.
@@ -809,7 +818,7 @@ int sama = 0;
 ~~~
 Mengcopy string ext pada newfolder namun tanpa titik. Mendeklarasikan variabel compare dan sama = 0 (sebagai flag untuk membuat new folder)
 ~~~c
- DIR* d = opendir(".");
+DIR* d = opendir(".");
 struct dirent *dir;
 if(d){
     while((dir = readdir(d)) != NULL){
@@ -872,7 +881,10 @@ strcat(unk, "Unknown");
 DIR* dir = opendir(unk);
 if(dir){
     printf("udah ada\n");
-    strcat(unk, name);
+    if(name)
+	strcat(unk, name);
+    else
+	sprintf(unk, "%s/%s", unk, path);
     //printf("folder: %s\npath: %s\n", unk, path);
     if(rename(path, unk) < 0)
 	printf("Error move file\n");
@@ -881,14 +893,17 @@ if(dir){
     }
 }
 ~~~
-Membuat string unk untuk nama folder baru, yang selanjutnya mengisi string tersebut dengan "Unknown". Membuka direktori unk untuk mengecek apakah direktori "Unknown" sudah ada atau belum. Jika sudah ada, menambahkan string name di belakang string unk lalu memindah file dengan fungsi rename() dari path ke unk.
+Membuat string unk untuk nama folder baru, yang selanjutnya mengisi string tersebut dengan "Unknown". Membuka direktori unk untuk mengecek apakah direktori "Unknown" sudah ada atau belum. Jika sudah ada, menambahkan string name di belakang string unk (untuk opsi -f dan -d, sedangkan opsi \* masuk ke else) lalu memindah file dengan fungsi rename() dari path ke unk.
 ~~~c
 else{
     printf("newfolder: %s", unk);
     if(mkdir(unk, 0777) < 0)
 	printf("Error create folder\n");
     else{
-	strcat(unk, name);
+	 if(name)
+	    strcat(unk, name);
+	else
+	    sprintf(unk, "%s/%s", unk, path);
 	if(rename(path, unk) < 0)
 	    printf("Error move file\n");
 	else{
@@ -994,33 +1009,23 @@ format seperti matriks.
 #define M 4
 #define N 5
 
-pthread_mutex_t lock;
-int array_hasil[20];
-int id_arr = 0;
-
 void* jumlah(void* angka){
-    //pthread_mutex_lock(&lock);
     int bil;
 
     bil = (int)(intptr_t)angka;
-    //printf("angka = %d\n", bil);
+
     int hasil = 1;
     int i;
 
     for(i=2; i<=bil; i++)
         hasil += i;
-    
-    //pthread_mutex_lock(&lock);
-    array_hasil[id_arr] = hasil;
-    id_arr++;
-    //pthread_mutex_unlock(&lock);
+
+    int *tambah = (int*)malloc(sizeof(int));
+    *tambah = hasil;
+    pthread_exit(tambah);
 }
 
 int main(){
-    if (pthread_mutex_init(&lock, NULL) != 0){
-        printf("\n mutex init failed\n");
-        return 1;
-    }
 
     key_t key = 1234;
     int *hasil;
@@ -1044,19 +1049,16 @@ int main(){
         err = pthread_create(&(thread[i]), NULL, &jumlah, (void*)(intptr_t)hasil[i]);
     }
 
+    printf("Hasil penjumlahan:\n");
     for(i=0; i<20; i++){
-        pthread_join(thread[i], NULL);
-    }
+        void *k;
+        pthread_join(thread[i], &k);
 
-    printf("\nHasil penjumlahan:\n");
-        for(i=0; i<20; i++){
-            printf("%d ", array_hasil[i]);
-            //fflush(stdout);
-            if((i + 1) % 5 == 0){
-                printf("\n");
-                //fflush(stdout);
-            }
-        }
+        int* p = (int*)k;
+        printf("%d ", *p);
+        if((i + 1) % 5 == 0)
+            printf("\n");
+    }
 
     shmdt(hasil);
     shmctl(shmid, IPC_RMID, NULL);
@@ -1064,19 +1066,17 @@ int main(){
 ~~~
 Penjelasan:
 - Mendefine ukuran matriks sama seperti 4a hanya saja cuma M dan N yaitu 4 dan 5
-- `pthread_mutex_t lock` ini sebenarnya mendeklarasikan mutex namun pada akhirnya tidak dipakai, saya lupa tidak menghapus.
-- mendeklarasikan array_hasil sebagai array untuk menyimpan hasil dari pertambahan angka dan deklarasi serta inisialisasi variabel integer id_arr untuk index array_hasil yang dimulai dengan 0.
 - Membuat fungsi void pointer jumlah dengan parameter void pointer yang nantinya akan menghitung penjumlahan tiap-tiap angka pada matriks hasil.
 	- deklarasi variabel integer bil yang kemudian di-assign dengan variabel void pointer angka yang telah dipassing.
 	- inisialisasi variabel hasil untuk menyimpan hasil dari penjumlahan bilangan
 	- melakukan penjumlahan bilangan dengan iterasi dari 2 (karena hasil tadi sudah di-assign dengan 1) hingga bilangan itu sendiri.
-	- menyimpan hasil ke dalam array_hasil, lalu meng-increment id_arr.
+	- deklarasi variabel integer pointer tambah untuk menyimpan hasil, yang selanjutnya akan dipakai sebagai return pthread_exit
 - Dalam fungsi main program:
-	- seperti yang sudah saya katakan di atas, `pthread_mutex` tidak jadi dipakai.
 	- sama seperti 4a, yaitu melakukan template share memory.
 	- menampilkan hasil dari perkalian matriks yang telah diambil dari share memory dalam bentuk array satu dimensi bernama hasil. ditampilkan dalam bentuk seperti matriks sehingga apabila index angkanya bisa habis dibagi 5 maka akan mengeprint newline.
-	- mendeklarasikan thread berjumlah 20, membentuk thread menggunakan `pthread_create` dengan parameter thread ke-i, NULL, fungsi jumlah, dan angka ke-i dalam array hasil. setelah itu meng-join-kan semua thread.
-	- menampilkan array_hasil dalam bentuk matriks.
+	- mendeklarasikan thread berjumlah 20, membentuk thread menggunakan `pthread_create` dengan parameter thread ke-i, NULL, fungsi jumlah, dan angka ke-i dalam array hasil. 
+	- melakukan pthread_join dengan k sebagai tempat menyimpan return dari pthread_exit.
+	- meng-assign integer pointer p dengan k, lalu menampilkan p (hasil penjumlahan) dalam bentuk matriks.
 
 ### 4c
 1. Buatlah program C ketiga dengan nama "4c.c". Program ini tidak

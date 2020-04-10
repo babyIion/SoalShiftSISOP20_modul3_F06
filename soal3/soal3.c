@@ -12,10 +12,6 @@ void* pindah(void*);
 int is_regular_file(const char*);
 
 int main(int argc, char* argv[]){
-    int j;
-    // for(j=0; j<argc; j++){
-    //     printf("argumen %d: %s\n", j, argv[j]);
-    // }
     if(argc < 2) 
         printf("argumennya kakak\n");
     else if(strcmp(argv[1], "-f") == 0){
@@ -94,7 +90,7 @@ int main(int argc, char* argv[]){
                     //printf("%s\n", dir->d_name);
                     char path[300];
                     sprintf(path, "%s/%s", argv[2], dir->d_name);
-                    //printf("path: %s\n", path);
+                    printf("path: %s\n", path);
                     err = pthread_create(&(thread[index]), NULL, &pindah, (void*)path);
                     //printf("%d\n", index);
                     index++;
@@ -109,7 +105,6 @@ int main(int argc, char* argv[]){
     else{
         printf("Salah argumen kakak\n");
     }
-    //pthread_mutex_destroy(&lock);
 }
 
 void* pindah(void* ptr){
@@ -118,7 +113,9 @@ void* pindah(void* ptr){
     char* name;
     path = (char*)ptr;
 
+    printf("path pindah: %s\n", path);
     name = strrchr(path, '/');  //nama file tapi ada /-nya, eg: "/soal1.sh"
+    if(name) printf("%s\n", name);
     char newfolder[100];        
     ext = strrchr(path, '.');   //extensi file
     //kalau jenis file diketahui
@@ -151,11 +148,15 @@ void* pindah(void* ptr){
         closedir(d);
         if(sama == 1){
             //printf("masuk sama\n");
-            if(name)
+            if(name){
                 strcat(newfolder, name);
-            else
+                printf("ada nama, folder: %s\n", newfolder);
+            }   
+            else{
                 sprintf(newfolder, "%s/%s", newfolder, path);
-            printf("folder: %s\n", newfolder);
+                printf("folder: %s\n", newfolder);
+            }  
+            
             if(rename(path, newfolder) < 0)
                 printf("Error move file\n");
             else{
@@ -167,10 +168,14 @@ void* pindah(void* ptr){
             if(mkdir(newfolder, 0777) < 0)
                 printf("Error create folder\n");
             else{
-                if(name)
+                if(name){
                     strcat(newfolder, name);
-                else
+                    printf("ada nama, folder: %s\n", newfolder);
+                }   
+                else{
                     sprintf(newfolder, "%s/%s", newfolder, path);
+                    printf("folder: %s\n", newfolder);
+                }  
                 if(rename(path, newfolder) < 0)
                     printf("Error move file\n");
                 else{
@@ -187,7 +192,11 @@ void* pindah(void* ptr){
         DIR* dir = opendir(unk);
         if(dir){
             printf("udah ada\n");
-            strcat(unk, name);
+            if(name)
+                strcat(unk, name);
+            else
+                sprintf(unk, "%s/%s", unk, path);
+            //strcat(unk, name);
             //printf("folder: %s\npath: %s\n", unk, path);
             if(rename(path, unk) < 0)
                 printf("Error move file\n");
@@ -200,7 +209,11 @@ void* pindah(void* ptr){
             if(mkdir(unk, 0777) < 0)
                 printf("Error create folder\n");
             else{
-                strcat(unk, name);
+                if(name)
+                    strcat(unk, name);
+                else
+                    sprintf(unk, "%s/%s", unk, path);
+                //strcat(unk, name);
                 if(rename(path, unk) < 0)
                     printf("Error move file\n");
                 else{

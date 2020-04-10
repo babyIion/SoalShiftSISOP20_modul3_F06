@@ -196,7 +196,6 @@ void* pindah(void* ptr){
                 strcat(unk, name);
             else
                 sprintf(unk, "%s/%s", unk, path);
-            //strcat(unk, name);
             //printf("folder: %s\npath: %s\n", unk, path);
             if(rename(path, unk) < 0)
                 printf("Error move file\n");
@@ -213,7 +212,6 @@ void* pindah(void* ptr){
                     strcat(unk, name);
                 else
                     sprintf(unk, "%s/%s", unk, path);
-                //strcat(unk, name);
                 if(rename(path, unk) < 0)
                     printf("Error move file\n");
                 else{
